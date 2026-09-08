@@ -1,0 +1,28 @@
+# Rendered per-request by scripts/provision.sh via envsubst, and only applied
+# when config/policies.yaml "network.allowedEgressCIDRs" is non-empty.
+# Required vars: SANDBOX_NAMESPACE, CATALOG_ID, REQUEST_ID, EGRESS_CIDR_BLOCK
+#
+# =============================================================================
+# IMPLEMENTATION_REQUIRED: the Network/Security team must supply the real
+# internal CIDR ranges (Quay, internal package mirrors, internal APIs,
+# corporate proxy, etc.) in config/policies.yaml "network.allowedEgressCIDRs".
+# No enterprise CIDR is hardcoded anywhere in this repository. Until that
+# list is populated, scripts/provision.sh SKIPS applying this policy, which
+# means egress beyond the namespace and DNS is blocked entirely by
+# 00-default-deny-all.yaml (fail-closed, not fail-open).
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-controlled
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+${EGRESS_CIDR_BLOCK}

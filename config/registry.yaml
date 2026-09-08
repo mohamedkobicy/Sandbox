@@ -1,0 +1,108 @@
+---
+# =============================================================================
+# config/registry.yaml -- Enterprise Quay registry configuration
+# =============================================================================
+#
+# No real hostname is assumed anywhere in this repository. Every image
+# reference is assembled at provision time from this file (or the
+# equivalent environment variables below, which take precedence -- see
+# scripts/common.sh::resolve_registry()).
+#
+#   image reference = <hostname>/<organization>/<repository>:<tag>
+#   or, once digest pinning is enabled:
+#   image reference = <hostname>/<organization>/<repository>@<digest>
+#
+# Environment variable overrides (used by scripts/*.sh; unset = use this file):
+#   QUAY_REGISTRY       overrides registry.hostname
+#   QUAY_ORGANIZATION    overrides registry.organization
+#
+# =============================================================================
+# IMPLEMENTATION_REQUIRED (DevOps team must supply before production use):
+#   - registry.hostname must be replaced with the real internal Quay hostname.
+#   - registry.pullSecretName must reference a real, pre-created OpenShift
+#     Secret (docker-registry type) available in every sandbox namespace,
+#     or provisioned automatically by scripts/provision.sh via the
+#     namespace's linked pull secret / image-puller RoleBinding.
+#   - A decision is needed on whether every sandbox namespace gets its own
+#     scoped Quay robot account, or shares a read-only "sandbox-puller"
+#     robot account. Per-namespace robot accounts are stronger isolation
+#     but require Quay-side automation from the provisioning engine.
+# =============================================================================
+apiVersion: sandbox.gosi/v1
+kind: RegistryConfig
+metadata:
+  name: enterprise-sandbox-registry
+
+registry:
+  # Placeholder only -- DevOps must replace with the real internal Quay host.
+  hostname: "quay.example.internal"
+  organization: "sandbox"
+
+  # Name of the OpenShift pull secret (docker-registry type) that must exist
+  # in each sandbox namespace, or be linked to the sandbox ServiceAccount via
+  # `oc secrets link`. Never store the actual credential in this repository.
+  pullSecretName: "sandbox-quay-pull-secret"
+
+  # Default tag used while the catalog operates in "approved floating tag"
+  # mode. See "Image Promotion Process" below for the migration path to
+  # immutable digests.
+  defaultTag: "approved"
+
+  # TLS verification must remain enabled against an internal Quay instance
+  # with a trusted CA. Do not disable in any environment that is not an
+  # isolated, ephemeral test cluster.
+  insecureSkipTLSVerify: false
+
+# -----------------------------------------------------------------------------
+# Image promotion process (upstream -> enterprise build -> scan -> approval ->
+# Quay -> digest pinning -> catalog publication)
+# -----------------------------------------------------------------------------
+# This section documents the pipeline; it is not executed by this repository.
+# It exists so the DevOps/Security teams building that pipeline have an
+# authoritative description to implement against, consistent with the
+# Governance sheet ("Golden source", "Scan", "Immutable deployment").
+imagePromotion:
+  stages:
+    - stage: upstream-source
+      description: >-
+        Identify an approved upstream base or application image (e.g. an
+        official language runtime image, or a Red Hat UBI-based image).
+        Only sources on the enterprise approved-vendor list may be used.
+    - stage: enterprise-build
+      description: >-
+        Rebuild the image from an approved Containerfile against the
+        internal UBI base images (BASE-UBI9 / BASE-UBI9M), pinning all
+        package versions, running as a non-root user, and stripping
+        unnecessary tooling.
+    - stage: security-scan
+      description: >-
+        Run vulnerability (CVE) and malware/policy scanning (e.g. the
+        enterprise-approved scanner integrated with Quay, such as Clair or
+        an equivalent). A build that fails policy thresholds is rejected
+        and never published to the sandbox organization.
+    - stage: approval
+      description: >-
+        Image owner (see config/catalog.yaml "owner" field) and Security
+        sign off on the scan results and intended use. Recorded outside
+        this repository in the enterprise change/approval system.
+    - stage: publish-to-quay
+      description: >-
+        Push the approved image to
+        <hostname>/<organization>/<repository>:<version-tag>, then apply
+        the immutable "approved" or team-specific promotion tag used by
+        the catalog.
+    - stage: digest-pinning
+      description: >-
+        Resolve the published tag to its immutable sha256 digest and record
+        it in config/catalog.yaml as image.digest for the corresponding
+        Catalog ID. Once set, scripts/provision.sh MUST deploy by digest,
+        never by floating tag (see config/policies.yaml
+        "images.requireDigestInProduction").
+    - stage: catalog-publication
+      description: >-
+        Update config/catalog.yaml (image.tag / image.digest) and, where
+        applicable, docs/CATALOG-MAPPING.md. Only then does the Catalog ID
+        become eligible for remedySelectable: true in a production
+        environment.
+  exampleDigestReference: >-
+    quay.example.internal/sandbox/dev/python@sha256:REPLACE_WITH_REAL_DIGEST

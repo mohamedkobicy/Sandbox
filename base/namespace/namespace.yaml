@@ -1,0 +1,25 @@
+# Rendered per-request by scripts/provision.sh via envsubst -- do not `oc apply`
+# this file directly with literal ${...} placeholders still in it.
+#
+# Required environment variables at render time:
+#   SANDBOX_NAMESPACE, CATALOG_ID, REQUEST_ID, ENVIRONMENT, TEAM, OWNER,
+#   CREATED_AT, EXPIRES_AT
+#
+# No sensitive information is placed in labels or annotations (Section 12).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${SANDBOX_NAMESPACE}
+  labels:
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+    sandbox.gosi/environment: "${ENVIRONMENT}"
+    sandbox.gosi/team: "${TEAM}"
+  annotations:
+    sandbox.gosi/owner: "${OWNER}"
+    sandbox.gosi/created-at: "${CREATED_AT}"
+    sandbox.gosi/expires-at: "${EXPIRES_AT}"
+    sandbox.gosi/remedy-request-id: "${REQUEST_ID}"
+    openshift.io/description: "Enterprise sandbox namespace for catalog ${CATALOG_ID}, Remedy request ${REQUEST_ID}."
+    openshift.io/display-name: "${CATALOG_ID} sandbox (${REQUEST_ID})"

@@ -1,0 +1,185 @@
+---
+# =============================================================================
+# config/policies.yaml -- Governance-derived enforcement policy
+# =============================================================================
+#
+# This file translates the "Governance" sheet of Sandbox_Image_Catalog.xlsx
+# into machine-readable settings consumed by scripts/validate.sh and
+# scripts/provision.sh. Every rule below is traceable to a Governance sheet
+# row; see the "governanceRule" comment on each block.
+#
+apiVersion: sandbox.gosi/v1
+kind: PolicyConfig
+metadata:
+  name: enterprise-sandbox-policies
+
+# governanceRule: "No arbitrary images" -- Remedy accepts catalog IDs only;
+# users cannot submit arbitrary registry URLs.
+images:
+  allowArbitraryImageReferences: false
+  requireCatalogId: true
+  # governanceRule: "Golden source" -- only approved upstream/internal images
+  # can be promoted to Quay; the registry organization is fixed by config.
+  allowedRegistryHostnames:
+    - "${QUAY_REGISTRY}"    # resolved from config/registry.yaml at runtime
+  # governanceRule: "Immutable deployment" -- provisioning should ultimately
+  # reference approved immutable image digests.
+  requireDigestInProduction: false   # flip to true once digest pinning (see
+                                      # config/registry.yaml imagePromotion)
+                                      # is complete for the full catalog
+  warnOnFloatingTag: true
+
+# governanceRule: "Scan" -- every image must pass vulnerability/malware
+# scanning before catalog publication. This repository does not run the
+# scan itself; it records the requirement and the field validate.sh checks
+# in config/catalog.yaml (a future field: image.scanStatus) once the
+# enterprise scanning pipeline is wired to publish results here.
+scanning:
+  required: true
+  blockOnFailedScan: true
+  recordedIn: "enterprise vulnerability scanning platform (integration pending)"
+
+# governanceRule: "No embedded credentials" -- AI provider keys, Git tokens,
+# DB passwords and certificates are injected at runtime, never baked into
+# images, Git, ConfigMaps, or command-line examples.
+secrets:
+  allowInImages: false
+  allowInGitRepo: false
+  allowInConfigMaps: false
+  allowInCommandLineArgs: false
+  injectionMethods:
+    - "OpenShift Secret (volume mount or envFrom)"
+    - "External Secrets Operator / enterprise Vault integration (future)"
+  aiProviderKeyHandling: >-
+    Claude/OpenAI/other LLM provider API keys are supplied only via a
+    pre-created OpenShift Secret referenced by name at provision time
+    (see templates/integration/secrets). AI-* Catalog IDs never declare a
+    default key and never accept one as a request parameter.
+
+# governanceRule: "OpenShift compatibility" -- images must support the
+# approved OpenShift restricted security context and non-root execution.
+security:
+  sccProfile: "restricted-v2"
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  dropAllCapabilities: true
+  allowedCapabilitiesAdd: []
+  forbidPrivileged: true
+  forbidHostNetwork: true
+  forbidHostPID: true
+  forbidHostPath: true
+  allowFixedUID: false     # let OpenShift assign a UID from the namespace
+                            # range unless a documented exception exists
+  clusterAdminForbidden: true   # OPS-OC and all workspaces: namespace-scoped
+                                  # RBAC only, enforced in base/rbac
+
+# governanceRule: "Lifecycle" -- each family needs an owner, supported
+# versions, patch cadence and retirement policy.
+lifecycle:
+  defaultTtl: "7d"
+  maxTtl: "30d"
+  ttlExtensionAllowed: true
+  maxTtlExtensions: 2
+  expiredSandboxAction: "flag-for-deletion"   # see scripts/health-check.sh
+  patchCadence: "monthly image rebuild, or immediately on critical CVE"
+  retirementNotice: "14d"
+
+# governanceRule: "Service vs image" -- databases, Kafka, Spark, Airflow etc.
+# must be provisioned via approved templates/operators, not raw Deployments.
+platformServices:
+  disallowRawDeploymentForTypes:
+    - platform-service
+  requireOperatorOrTemplate: true
+
+# governanceRule: "Entitlement" -- commercial images/tools require licensing
+# and entitlement validation before inclusion.
+entitlement:
+  requiredForTypes: []          # populated per Catalog ID via
+                                  # implementation.decisionNeeded in
+                                  # config/catalog.yaml (e.g. DB-MONGO)
+  requireSignoffBeforeAutoApproval: true
+
+# Approval workflow (Approval column: Auto | Review)
+approval:
+  modes:
+    auto:
+      description: >-
+        Standard request validation (catalog ID exists, remedySelectable,
+        quotas, storage/GPU limits) is sufficient; no extra token required.
+    review:
+      description: >-
+        Requires an explicit upstream-approved indicator before
+        provisioning proceeds. The CLI accepts --approved true only as a
+        DEVELOPMENT/TESTING convenience; it is NOT a security control on
+        its own. See docs/SECURITY.md "Approval trust boundary".
+      requireApprovalToken: true
+      trustedIssuers:
+        - "Remedy workflow service account (IMPLEMENTATION_REQUIRED: name the
+           real workflow identity / OIDC client once integrated)"
+
+# GPU handling -- GPU is never auto-requested; --gpu true is required and is
+# validated against both the catalog entry and cluster capability.
+gpu:
+  resourceName: "nvidia.com/gpu"     # placeholder; confirm against the
+                                       # accelerator actually installed
+  defaultRequestCount: 1
+  maxRequestCount: 1
+  requireExplicitFlag: true
+  requireClusterCapacityCheck: true
+
+# Namespace / naming policy
+namespace:
+  prefix: "sbx"
+  pattern: "{prefix}-{team}-{requestId}"
+  maxLength: 63
+  managedByLabelValue: "sandbox-automation"
+  requiredLabels:
+    - "sandbox.gosi/catalog-id"
+    - "sandbox.gosi/request-id"
+    - "sandbox.gosi/managed-by"
+    - "sandbox.gosi/environment"
+  requiredAnnotations:
+    - "sandbox.gosi/owner"
+    - "sandbox.gosi/created-at"
+    - "sandbox.gosi/expires-at"
+    - "sandbox.gosi/remedy-request-id"
+
+# ResourceQuota / LimitRange enterprise defaults (base/resource-quota,
+# base/limit-range). Adjustable without touching the manifests themselves --
+# base/resource-quota/resource-quota.yaml and base/limit-range/limit-range.yaml
+# read these via envsubst in scripts/provision.sh.
+quota:
+  pods: "10"
+  persistentvolumeclaims: "4"
+  services: "5"
+  requestsCpu: "6"
+  requestsMemory: "24Gi"
+  limitsCpu: "12"
+  limitsMemory: "48Gi"
+  requestsStorage: "200Gi"
+
+limitRange:
+  defaultRequestCpu: "250m"
+  defaultRequestMemory: "512Mi"
+  defaultLimitCpu: "1"
+  defaultLimitMemory: "2Gi"
+  minRequestCpu: "50m"
+  minRequestMemory: "64Mi"
+  maxLimitCpu: "4"
+  maxLimitMemory: "16Gi"
+
+# Storage policy
+storage:
+  defaultClass: ""     # empty = use the cluster default StorageClass
+  allowedSizesPattern: '^[0-9]+(Gi|Mi)$'
+  maxSize: "200Gi"
+
+# Network policy placeholders the network/security team must supply.
+# See base/network-policy and docs/SECURITY.md.
+network:
+  # CIDR(s) allowed as controlled egress destinations (e.g. internal Quay,
+  # internal package mirrors, internal APIs). Left empty deliberately --
+  # DevOps/Network team must populate before enabling the egress policy.
+  allowedEgressCIDRs: []          # IMPLEMENTATION_REQUIRED
+  ingressNamespaceSelectorLabel: "network.openshift.io/policy-group=ingress"
+  dnsNamespaceSelectorLabel: "kubernetes.io/metadata.name=openshift-dns"

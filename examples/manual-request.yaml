@@ -1,0 +1,30 @@
+# Example manual DevOps-initiated request, equivalent to a Remedy request but
+# expressed as YAML for direct use/scripting (e.g. Ansible reading this file
+# and shelling out to scripts/provision.sh, or a future API accepting this
+# body directly). Same trust boundary as examples/remedy-request.json: no
+# image URL, registry, ServiceAccount, SCC, or arbitrary YAML is accepted.
+apiVersion: sandbox.gosi/v1
+kind: SandboxRequest
+spec:
+  catalogId: DATA-JUP
+  requestId: REQ000789
+  owner: team-analytics
+  environment: sandbox
+  ttl: 7d
+  # Optional, policy-bounded (see config/policies.yaml):
+  gpu: false
+  storageSize: 20Gi
+  approved: false        # DATA-JUP has Approval: Auto in config/catalog.yaml,
+                          # so this is ignored; set true only for
+                          # Approval: Review catalog entries, and only once a
+                          # real upstream approval exists (see docs/SECURITY.md)
+  enable: []
+---
+# Equivalent CLI invocation for the request above:
+#   scripts/provision.sh \
+#     --catalog DATA-JUP \
+#     --request-id REQ000789 \
+#     --owner team-analytics \
+#     --environment sandbox \
+#     --ttl 7d \
+#     --storage-size 20Gi

@@ -1,0 +1,22 @@
+# Headless Service backing the StatefulSet -- required for stable network
+# identity even though sandbox platform services run a single replica.
+# Required vars: SANDBOX_NAMESPACE, WORKLOAD_NAME, CATALOG_ID, REQUEST_ID,
+#   SERVICE_PORT
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${WORKLOAD_NAME}
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    app: ${WORKLOAD_NAME}
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+spec:
+  clusterIP: None
+  selector:
+    app: ${WORKLOAD_NAME}
+  ports:
+    - name: main
+      port: ${SERVICE_PORT}
+      targetPort: ${SERVICE_PORT}

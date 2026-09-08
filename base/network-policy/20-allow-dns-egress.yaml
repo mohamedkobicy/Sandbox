@@ -1,0 +1,30 @@
+# Rendered per-request by scripts/provision.sh via envsubst.
+# Required vars: SANDBOX_NAMESPACE, CATALOG_ID, REQUEST_ID
+#
+# Permit DNS resolution egress. The DNS namespace label below
+# (kubernetes.io/metadata.name=openshift-dns) matches OpenShift's built-in
+# DNS operator namespace. Confirm this matches your cluster's DNS
+# implementation (see docs/RUNBOOK.md "Prerequisites").
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-dns
+      ports:
+        - protocol: UDP
+          port: 5353
+        - protocol: TCP
+          port: 5353

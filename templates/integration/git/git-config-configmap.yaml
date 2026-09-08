@@ -1,0 +1,28 @@
+# Rendered by scripts/provision.sh only when --enable git is requested (or
+# the primary catalog ID is SHARED-GIT). Contains NO credentials.
+# Required vars: SANDBOX_NAMESPACE, CATALOG_ID, REQUEST_ID
+#
+# =============================================================================
+# IMPLEMENTATION_REQUIRED: replace the placeholder values below with the
+# real enterprise Git host(s), CA bundle reference, and any internal mirror
+# rewrite rules. Coordinate with the Git/DevOps platform team.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sandbox-git-config
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+data:
+  gitconfig: |
+    # IMPLEMENTATION_REQUIRED: enterprise Git configuration fragment
+    [http]
+        # sslCAInfo = /etc/sandbox/git/ca/ca-bundle.crt
+    # [url "https://git.example.internal/"]
+    #     insteadOf = https://github.com/enterprise-mirror/
+  allowedHosts: |
+    # IMPLEMENTATION_REQUIRED: one enterprise Git host per line
+    # git.example.internal

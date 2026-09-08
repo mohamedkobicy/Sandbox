@@ -1,0 +1,67 @@
+# Identical to deployment.yaml plus a persistent /workspace volume backed by
+# templates/workspace/base/pvc.yaml. Used when config/catalog.yaml
+# <ID>.storage.enabled == true. See deployment.yaml for the full variable list.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${WORKLOAD_NAME}
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    app: ${WORKLOAD_NAME}
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+    sandbox.gosi/environment: "${ENVIRONMENT}"
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  strategy:
+    type: Recreate    # a ReadWriteOnce PVC cannot be mounted by two pods at
+                       # once, so rolling updates are not used for workspaces
+  selector:
+    matchLabels:
+      app: ${WORKLOAD_NAME}
+  template:
+    metadata:
+      labels:
+        app: ${WORKLOAD_NAME}
+        sandbox.gosi/catalog-id: "${CATALOG_ID}"
+        sandbox.gosi/request-id: "${REQUEST_ID}"
+    spec:
+      serviceAccountName: ${SERVICE_ACCOUNT_NAME}
+      automountServiceAccountToken: ${AUTOMOUNT_SA_TOKEN}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: workspace
+          image: ${IMAGE_REF}
+          imagePullPolicy: ${IMAGE_PULL_POLICY}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: "${CPU_REQUEST}"
+              memory: "${MEM_REQUEST}"
+            limits:
+              cpu: "${CPU_LIMIT}"
+              memory: "${MEM_LIMIT}"
+${GPU_LIMIT_LINE}
+          env:
+            - name: SANDBOX_CATALOG_ID
+              value: "${CATALOG_ID}"
+            - name: SANDBOX_REQUEST_ID
+              value: "${REQUEST_ID}"
+            - name: SANDBOX_TTL
+              value: "${TTL}"
+          volumeMounts:
+            - name: workspace-data
+              mountPath: /workspace
+      volumes:
+        - name: workspace-data
+          persistentVolumeClaim:
+            claimName: ${WORKLOAD_NAME}-data

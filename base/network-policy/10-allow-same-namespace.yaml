@@ -1,0 +1,25 @@
+# Rendered per-request by scripts/provision.sh via envsubst.
+# Required vars: SANDBOX_NAMESPACE, CATALOG_ID, REQUEST_ID
+#
+# Permit pod-to-pod communication within the same sandbox namespace (e.g. a
+# workspace talking to a platform-service StatefulSet in the same namespace).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector: {}
+  egress:
+    - to:
+        - podSelector: {}

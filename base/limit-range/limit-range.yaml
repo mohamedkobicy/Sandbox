@@ -1,0 +1,32 @@
+# Rendered per-request by scripts/provision.sh via envsubst, values sourced
+# from config/policies.yaml "limitRange" -- adjust the DevOps baseline there,
+# not here. Protects against pods with no resource requests/limits at all,
+# and caps any single container regardless of the profile applied to it.
+# Required vars: SANDBOX_NAMESPACE, CATALOG_ID, REQUEST_ID, and LIMITRANGE_*.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: sandbox-limit-range
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "${LIMITRANGE_DEFAULT_LIMIT_CPU}"
+        memory: "${LIMITRANGE_DEFAULT_LIMIT_MEMORY}"
+      defaultRequest:
+        cpu: "${LIMITRANGE_DEFAULT_REQUEST_CPU}"
+        memory: "${LIMITRANGE_DEFAULT_REQUEST_MEMORY}"
+      min:
+        cpu: "${LIMITRANGE_MIN_REQUEST_CPU}"
+        memory: "${LIMITRANGE_MIN_REQUEST_MEMORY}"
+      max:
+        cpu: "${LIMITRANGE_MAX_LIMIT_CPU}"
+        memory: "${LIMITRANGE_MAX_LIMIT_MEMORY}"
+    - type: PersistentVolumeClaim
+      max:
+        storage: "${QUOTA_REQUESTS_STORAGE}"

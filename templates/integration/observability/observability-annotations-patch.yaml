@@ -1,0 +1,15 @@
+# Strategic-merge patch applied with `oc patch deployment/${WORKLOAD_NAME}`
+# by scripts/provision.sh, only when --enable observability is supplied.
+# Required vars: WORKLOAD_NAME
+#
+# IMPLEMENTATION_REQUIRED: confirm the real annotation/label keys with the
+# Infra/Observability team (see README.md). The values below are the common
+# OpenShift/Prometheus conventions and are safe placeholders, not a
+# guarantee they match this cluster's configuration.
+spec:
+  template:
+    metadata:
+      labels:
+        sandbox.gosi/observability: "enabled"
+      annotations:
+        prometheus.io/scrape: "true"

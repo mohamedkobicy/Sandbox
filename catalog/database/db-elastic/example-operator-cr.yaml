@@ -1,0 +1,43 @@
+# =============================================================================
+# EXAMPLE ONLY -- NOT A REAL, FUNCTIONING RESOURCE. NEVER `oc apply` THIS FILE.
+# =============================================================================
+#
+# This illustrates the *shape* of what a future Custom Resource will look
+# like once the DevOps team selects and installs a real operator for this
+# Platform Service Catalog ID (see README.md in this directory and
+# docs/CATALOG-MAPPING.md). The apiVersion/kind below are intentionally a
+# non-existent placeholder so this file can never be mistaken for something
+# that actually works if it is copy-pasted without reading these comments.
+#
+# Once a real operator is selected (e.g. one of the
+# implementation.candidateOperators listed in config/catalog.yaml for this
+# Catalog ID), replace this file with the operator's real CR, parameterized
+# the same way every other template in this repository is (envsubst
+# placeholders resolved by scripts/provision.sh from config/catalog.yaml,
+# config/profiles.yaml, and the request arguments).
+apiVersion: platform.sandbox.internal/v1alpha1   # PLACEHOLDER -- not a real API
+kind: PlatformServiceRequest                      # PLACEHOLDER -- not a real Kind
+metadata:
+  name: ${WORKLOAD_NAME}
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+spec:
+  catalogId: "${CATALOG_ID}"
+  profile: "${PROFILE}"          # resolved from config/profiles.yaml
+  storage:
+    size: "${STORAGE_SIZE}"
+    storageClassName: "${STORAGE_CLASS}"   # empty = cluster default
+  # -- everything below this line is operator-specific and MUST be replaced --
+  # example (PostgreSQL-shaped operator):
+  #   version: "16"
+  #   instances: 1
+  #   backups:
+  #     enabled: false   # sandboxes are ephemeral; confirm policy before enabling
+  # example (Kafka-shaped operator):
+  #   kafka:
+  #     replicas: 1
+  #     listeners: [...]
+  #   zookeeper:
+  #     replicas: 1

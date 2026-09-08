@@ -1,0 +1,23 @@
+# Rendered per-request by scripts/provision.sh via envsubst, values sourced
+# from config/policies.yaml "quota" -- adjust the DevOps baseline there, not here.
+# Required vars: SANDBOX_NAMESPACE, CATALOG_ID, REQUEST_ID, and QUOTA_* (see
+# scripts/common.sh::load_quota_vars()).
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: sandbox-quota
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+spec:
+  hard:
+    pods: "${QUOTA_PODS}"
+    persistentvolumeclaims: "${QUOTA_PVCS}"
+    services: "${QUOTA_SERVICES}"
+    requests.cpu: "${QUOTA_REQUESTS_CPU}"
+    requests.memory: "${QUOTA_REQUESTS_MEMORY}"
+    limits.cpu: "${QUOTA_LIMITS_CPU}"
+    limits.memory: "${QUOTA_LIMITS_MEMORY}"
+    requests.storage: "${QUOTA_REQUESTS_STORAGE}"

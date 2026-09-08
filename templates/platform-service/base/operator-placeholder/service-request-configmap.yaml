@@ -1,0 +1,29 @@
+# Applied by scripts/provision.sh for operator-placeholder / helm-placeholder
+# Catalog IDs. Provides an audit trail for the request even though the
+# workload itself is not deployed until an operator/chart is selected.
+# Required vars: SANDBOX_NAMESPACE, CATALOG_ID, REQUEST_ID, OWNER, PROFILE,
+#   STORAGE_SIZE, CREATED_AT, DECISION_NEEDED
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sandbox-service-request
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+data:
+  status: "IMPLEMENTATION_REQUIRED"
+  catalogId: "${CATALOG_ID}"
+  owner: "${OWNER}"
+  profile: "${PROFILE}"
+  requestedStorage: "${STORAGE_SIZE}"
+  createdAt: "${CREATED_AT}"
+  decisionNeeded: "${DECISION_NEEDED}"
+  note: >-
+    Namespace, RBAC, NetworkPolicy, ResourceQuota and LimitRange were
+    provisioned for this request. The platform service workload itself was
+    NOT deployed because this Catalog ID requires an enterprise-selected
+    operator or Helm chart that has not yet been implemented in this
+    repository. See templates/platform-service/base/operator-placeholder/README.md
+    and docs/CATALOG-MAPPING.md.

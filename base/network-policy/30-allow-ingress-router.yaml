@@ -1,0 +1,29 @@
+# Rendered per-request by scripts/provision.sh via envsubst, and only applied
+# when the catalog entry exposes a Route (config/catalog.yaml
+# network.route.enabled: true) -- see scripts/provision.sh render_network_policies().
+# Required vars: SANDBOX_NAMESPACE, CATALOG_ID, REQUEST_ID, ROUTE_TARGET_PORT
+#
+# Permit traffic from the OpenShift router (openshift-ingress namespace) to
+# the Route's backing Service/pod only. Workspaces without a Route never get
+# this policy, so they remain unreachable from outside the namespace.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-router
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-ingress
+      ports:
+        - protocol: TCP
+          port: ${ROUTE_TARGET_PORT}

@@ -1,0 +1,12 @@
+{
+  "_comment": "Example Remedy request exercising the policy-bounded optional parameters (Section 2). None of these let the requester name an image, registry, ServiceAccount, SCC, or host mount -- every value here is validated against config/catalog.yaml and config/policies.yaml by scripts/provision.sh before anything is applied.",
+  "catalogId": "AI-PY",
+  "requestId": "REQ000456",
+  "owner": "team-ml-platform",
+  "environment": "sandbox",
+  "ttl": "14d",
+  "gpu": true,
+  "storageSize": "30Gi",
+  "enable": ["git", "secrets"],
+  "secretRef": "team-ml-platform-anthropic-key"
+}
