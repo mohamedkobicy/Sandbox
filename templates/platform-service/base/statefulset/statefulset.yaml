@@ -1,0 +1,85 @@
+# Platform Service StatefulSet template -- ONLY for catalog entries whose
+# config/catalog.yaml implementation.method == "statefulset-template" (i.e.
+# a directly approved Quay image with no operator dependency: DB-VALKEY,
+# INT-KCONNECT). Every other Platform Service uses
+# templates/platform-service/base/operator-placeholder or a documented Helm
+# placeholder (see docs/CATALOG-MAPPING.md) -- Governance: "Service vs
+# image" forbids treating databases/streaming/orchestration platforms as
+# arbitrary Deployments.
+#
+# Required vars: SANDBOX_NAMESPACE, WORKLOAD_NAME, SERVICE_ACCOUNT_NAME,
+#   CATALOG_ID, REQUEST_ID, ENVIRONMENT, IMAGE_REF, IMAGE_PULL_POLICY,
+#   SERVICE_PORT, CPU_REQUEST, MEM_REQUEST, CPU_LIMIT, MEM_LIMIT,
+#   STORAGE_SIZE, STORAGE_CLASS_FIELD, EXTRA_ENV_BLOCK (may be empty --
+#   used by INT-KCONNECT to inject its Kafka bootstrap ConfigMap reference)
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ${WORKLOAD_NAME}
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    app: ${WORKLOAD_NAME}
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+    sandbox.gosi/environment: "${ENVIRONMENT}"
+spec:
+  serviceName: ${WORKLOAD_NAME}
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ${WORKLOAD_NAME}
+  template:
+    metadata:
+      labels:
+        app: ${WORKLOAD_NAME}
+        sandbox.gosi/catalog-id: "${CATALOG_ID}"
+        sandbox.gosi/request-id: "${REQUEST_ID}"
+    spec:
+      serviceAccountName: ${SERVICE_ACCOUNT_NAME}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: platform-service
+          image: ${IMAGE_REF}
+          imagePullPolicy: ${IMAGE_PULL_POLICY}
+          ports:
+            - name: main
+              containerPort: ${SERVICE_PORT}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: "${CPU_REQUEST}"
+              memory: "${MEM_REQUEST}"
+            limits:
+              cpu: "${CPU_LIMIT}"
+              memory: "${MEM_LIMIT}"
+          env:
+            - name: SANDBOX_CATALOG_ID
+              value: "${CATALOG_ID}"
+            - name: SANDBOX_REQUEST_ID
+              value: "${REQUEST_ID}"
+${EXTRA_ENV_BLOCK}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          sandbox.gosi/catalog-id: "${CATALOG_ID}"
+          sandbox.gosi/request-id: "${REQUEST_ID}"
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: "${STORAGE_SIZE}"
+${STORAGE_CLASS_FIELD}

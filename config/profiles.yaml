@@ -1,0 +1,74 @@
+---
+# =============================================================================
+# config/profiles.yaml -- Resource profile definitions (Small / Medium / Large)
+# =============================================================================
+#
+# Central definition of the CPU/memory requests+limits behind each named
+# profile referenced from config/catalog.yaml ("profile: small|medium|large").
+#
+# IMPORTANT: These are configurable ENTERPRISE DEFAULTS, not requirements.
+# The DevOps team should tune them to match real cluster capacity and cost
+# policy. Because every catalog entry references a profile *by name* rather
+# than embedding CPU/memory values, changing the numbers here immediately
+# changes what every workspace/service of that size gets on next
+# provision/reconcile -- no catalog.yaml or per-catalog manifest edits needed.
+#
+# scripts/provision.sh reads this file (via yq) to render the
+# ${CPU_REQUEST} / ${MEM_REQUEST} / ${CPU_LIMIT} / ${MEM_LIMIT} placeholders
+# in templates/workspace/base, templates/service/base, and
+# templates/platform-service/base before `oc apply`.
+#
+# GPU note: GPU quantities are handled separately (see config/policies.yaml
+# "gpu" section) because GPU is opt-in per request (--gpu true), not a
+# property of CPU/memory sizing.
+apiVersion: sandbox.gosi/v1
+kind: ProfileConfig
+metadata:
+  name: enterprise-sandbox-profiles
+  description: >-
+    Baseline CPU/memory requests and limits for sandbox workloads.
+    Adjust freely; no other file needs to change when you do.
+
+profiles:
+  small:
+    description: "Lightweight CLI/API workspaces, small caches, diagnostic tools"
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+    ephemeralStorage:
+      requests: 512Mi
+      limits: 2Gi
+
+  medium:
+    description: "General-purpose dev workspaces, JVM/.NET runtimes, notebooks, mid-size platform services"
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+    ephemeralStorage:
+      requests: 1Gi
+      limits: 4Gi
+
+  large:
+    description: "AI/ML workloads, search/streaming platform services, high-memory data processing"
+    requests:
+      cpu: "1"
+      memory: 4Gi
+    limits:
+      cpu: "4"
+      memory: 16Gi
+    ephemeralStorage:
+      requests: 2Gi
+      limits: 8Gi
+
+# Optional: per-namespace aggregate multipliers used by base/resource-quota
+# when a namespace is expected to run more than one workload (e.g. a
+# platform service plus its supporting tools). Left at 1x by default;
+# see config/policies.yaml "quota" for the actual ResourceQuota values.
+aggregation:
+  defaultReplicaAssumption: 1

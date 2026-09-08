@@ -1,0 +1,53 @@
+# Applied ONCE, cluster-wide, by scripts/deploy.sh (the platform team's
+# installer) -- NOT rendered per sandbox request.
+#
+# This ClusterRole defines the ceiling of what any sandbox owner can ever do,
+# anywhere. It is deliberately namespace-scoped in *usage*: it grants no
+# permissions by itself -- a RoleBinding (see role-binding.yaml, rendered per
+# request) binds it inside exactly one sandbox namespace. It is NEVER bound
+# with a ClusterRoleBinding.
+#
+# governanceRule: "No cluster-admin" (OPS-OC: "No cluster-admin") -- delegated
+# namespace/project-level permissions only. This ClusterRole intentionally
+# excludes: RBAC objects, SecurityContextConstraints, Namespace/Project
+# management, Node access, and any cluster-scoped resource.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: sandbox-workspace-edit
+  labels:
+    sandbox.gosi/managed-by: "sandbox-automation"
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "pods/exec", "services", "configmaps", "persistentvolumeclaims", "events"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]     # creation of Secrets containing real
+                                          # credentials is done by the platform
+                                          # integration path (templates/integration/secrets),
+                                          # not ad hoc by workspace owners
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["route.openshift.io"]
+    resources: ["routes"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["image.openshift.io"]
+    resources: ["imagestreams", "imagestreamtags"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["build.openshift.io"]
+    resources: ["builds", "buildconfigs"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+# Explicitly NOT granted (documented for reviewers, not enforced by the
+# absence itself but by never listing these here or anywhere else):
+#   - rbac.authorization.k8s.io/*      (no self-service RBAC changes)
+#   - security.openshift.io/securitycontextconstraints (no SCC escalation)
+#   - "" / namespaces, nodes, persistentvolumes           (no cluster-scoped access)
+#   - "*" apiGroups or resources, or verb "*"              (no wildcard grants)

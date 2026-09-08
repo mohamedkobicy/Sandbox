@@ -1,0 +1,69 @@
+# Base Workspace Deployment template (Section 3: "Workspace" classification).
+# Rendered by scripts/provision.sh via envsubst -- used when
+# config/catalog.yaml <ID>.storage.enabled == false.
+# For storage-backed workspaces, scripts/provision.sh instead renders
+# deployment-with-storage.yaml (identical except for the volume block).
+#
+# Required vars: SANDBOX_NAMESPACE, WORKLOAD_NAME, SERVICE_ACCOUNT_NAME,
+#   CATALOG_ID, REQUEST_ID, ENVIRONMENT, IMAGE_REF, IMAGE_PULL_POLICY,
+#   CPU_REQUEST, MEM_REQUEST, CPU_LIMIT, MEM_LIMIT, TTL,
+#   AUTOMOUNT_SA_TOKEN (true|false), GPU_LIMIT_LINE (may be empty)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${WORKLOAD_NAME}
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    app: ${WORKLOAD_NAME}
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+    sandbox.gosi/environment: "${ENVIRONMENT}"
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: ${WORKLOAD_NAME}
+  template:
+    metadata:
+      labels:
+        app: ${WORKLOAD_NAME}
+        sandbox.gosi/catalog-id: "${CATALOG_ID}"
+        sandbox.gosi/request-id: "${REQUEST_ID}"
+    spec:
+      serviceAccountName: ${SERVICE_ACCOUNT_NAME}
+      automountServiceAccountToken: ${AUTOMOUNT_SA_TOKEN}
+      # Do not add hostNetwork, hostPID, or hostPath here (Section 8). No
+      # catalog entry in this repository has a documented exception.
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: workspace
+          image: ${IMAGE_REF}
+          imagePullPolicy: ${IMAGE_PULL_POLICY}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: "${CPU_REQUEST}"
+              memory: "${MEM_REQUEST}"
+            limits:
+              cpu: "${CPU_LIMIT}"
+              memory: "${MEM_LIMIT}"
+${GPU_LIMIT_LINE}
+          env:
+            - name: SANDBOX_CATALOG_ID
+              value: "${CATALOG_ID}"
+            - name: SANDBOX_REQUEST_ID
+              value: "${REQUEST_ID}"
+            - name: SANDBOX_TTL
+              value: "${TTL}"
+          # No secrets are declared here. Secret injection is layered in by
+          # templates/integration/secrets when --enable secrets is requested
+          # (Section 17 / Governance "No embedded credentials").

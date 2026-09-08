@@ -1,0 +1,22 @@
+# Rendered only when config/catalog.yaml <ID>.storage.enabled == true.
+# Required vars: SANDBOX_NAMESPACE, WORKLOAD_NAME, CATALOG_ID, REQUEST_ID,
+#   STORAGE_SIZE, STORAGE_CLASS_FIELD (may be an empty string -- see
+#   scripts/common.sh::render_storage_class_field(); an empty value means
+#   "use the cluster default StorageClass", NOT "storageClassName: ''").
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ${WORKLOAD_NAME}-data
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    app: ${WORKLOAD_NAME}
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "${STORAGE_SIZE}"
+${STORAGE_CLASS_FIELD}

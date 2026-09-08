@@ -1,0 +1,74 @@
+# Base Stateless Service Deployment template (Section 3: "Stateless Service"
+# classification -- e.g. WEB-NGINX). Rendered by scripts/provision.sh via
+# envsubst when config/catalog.yaml <ID>.storage.enabled == false.
+# For storage-backed services, scripts/provision.sh renders
+# deployment-with-storage.yaml instead (adds a volume, e.g. custom NGINX
+# content for WEB-NGINX).
+#
+# Required vars: same as templates/workspace/base/deployment.yaml, plus
+#   SERVICE_PORT (the container's listen port, used for the readiness/
+#   liveness probes).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${WORKLOAD_NAME}
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    app: ${WORKLOAD_NAME}
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+    sandbox.gosi/environment: "${ENVIRONMENT}"
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: ${WORKLOAD_NAME}
+  template:
+    metadata:
+      labels:
+        app: ${WORKLOAD_NAME}
+        sandbox.gosi/catalog-id: "${CATALOG_ID}"
+        sandbox.gosi/request-id: "${REQUEST_ID}"
+    spec:
+      serviceAccountName: ${SERVICE_ACCOUNT_NAME}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: service
+          image: ${IMAGE_REF}
+          imagePullPolicy: ${IMAGE_PULL_POLICY}
+          ports:
+            - name: http
+              containerPort: ${SERVICE_PORT}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: "${CPU_REQUEST}"
+              memory: "${MEM_REQUEST}"
+            limits:
+              cpu: "${CPU_LIMIT}"
+              memory: "${MEM_LIMIT}"
+          readinessProbe:
+            tcpSocket:
+              port: ${SERVICE_PORT}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: ${SERVICE_PORT}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          env:
+            - name: SANDBOX_CATALOG_ID
+              value: "${CATALOG_ID}"
+            - name: SANDBOX_REQUEST_ID
+              value: "${REQUEST_ID}"

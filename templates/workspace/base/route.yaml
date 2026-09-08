@@ -1,0 +1,33 @@
+# Rendered only when config/catalog.yaml <ID>.network.route.enabled == true.
+# Required vars: SANDBOX_NAMESPACE, WORKLOAD_NAME, CATALOG_ID, REQUEST_ID,
+#   SERVICE_PORT, ROUTE_HOST_FIELD (may be an empty string, in which case
+#   OpenShift auto-generates a host from the cluster's default wildcard
+#   domain -- see scripts/common.sh::render_route_host_field() and
+#   config/policies.yaml / DEFAULT_DOMAIN env var).
+#
+# TLS is never disabled (Section 18). Enterprise ingress/TLS policy (a
+# custom wildcard cert, a different termination type, or an admission
+# webhook that rewrites Routes) may override these defaults -- confirm with
+# the Network/Security team before relying on edge termination in
+# production (see docs/RUNBOOK.md "Prerequisites").
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: ${WORKLOAD_NAME}
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    app: ${WORKLOAD_NAME}
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+spec:
+${ROUTE_HOST_FIELD}
+  to:
+    kind: Service
+    name: ${WORKLOAD_NAME}
+    weight: 100
+  port:
+    targetPort: ${SERVICE_PORT}
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

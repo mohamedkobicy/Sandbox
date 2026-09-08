@@ -1,0 +1,43 @@
+# Rendered per-request by scripts/provision.sh via envsubst.
+# Required vars: SANDBOX_NAMESPACE, CATALOG_ID, REQUEST_ID,
+#                OWNER_SUBJECT_KIND (User|Group), OWNER_SUBJECT_NAME,
+#                SERVICE_ACCOUNT_NAME
+#
+# Namespace-scoped only. Binds the pre-existing cluster-role.yaml
+# (installed once by scripts/deploy.sh) inside THIS namespace. Grants no
+# permission outside ${SANDBOX_NAMESPACE}.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sandbox-owner-binding
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+subjects:
+  - kind: ${OWNER_SUBJECT_KIND}
+    apiGroup: rbac.authorization.k8s.io
+    name: ${OWNER_SUBJECT_NAME}
+roleRef:
+  kind: ClusterRole
+  apiGroup: rbac.authorization.k8s.io
+  name: sandbox-workspace-edit
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sandbox-runtime-binding
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+subjects:
+  - kind: ServiceAccount
+    name: ${SERVICE_ACCOUNT_NAME}
+    namespace: ${SANDBOX_NAMESPACE}
+roleRef:
+  kind: ClusterRole
+  apiGroup: rbac.authorization.k8s.io
+  name: view

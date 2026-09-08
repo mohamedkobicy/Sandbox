@@ -1,0 +1,8 @@
+{
+  "_comment": "Example Remedy service catalog request payload. This is the ONLY shape Remedy is expected to send. See docs/ARCHITECTURE.md 'Service Catalog' and Section 15 of the design brief for the trust boundary this enforces: Remedy sends a catalogId and policy-bounded parameters, never an image URL, registry, ServiceAccount, SCC, or arbitrary YAML.",
+  "catalogId": "DEV-PY",
+  "requestId": "REQ000123",
+  "owner": "team-data",
+  "environment": "sandbox",
+  "ttl": "7d"
+}

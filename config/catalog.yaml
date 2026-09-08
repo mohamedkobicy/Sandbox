@@ -1,0 +1,1834 @@
+---
+# =============================================================================
+# config/catalog.yaml -- Enterprise Sandbox Catalog (machine-readable source)
+# =============================================================================
+#
+# This file is the SINGLE SOURCE OF TRUTH for what can be provisioned through
+# the sandbox automation. It is generated from, and must be kept in sync with,
+# the "Catalog" sheet of Sandbox_Image_Catalog.xlsx (see docs/CATALOG-MAPPING.md
+# for the full Catalog ID -> implementation mapping and the reconciliation
+# report at the bottom of that document).
+#
+# Consumers: scripts/provision.sh, scripts/validate.sh, scripts/health-check.sh,
+# and (in the future) any HTTP provisioning API, Ansible playbooks, or the
+# Remedy integration layer. Do NOT hardcode catalog knowledge (image names,
+# profiles, approval rules) anywhere else -- read it from this file.
+#
+# Schema notes (per entry, keyed by Catalog ID):
+#   type                : workspace | service | platform-service | integration | base-image
+#   implementation.method:
+#     none-base-image      - build-time base layer only; not independently provisioned
+#     workspace-template   - rendered from templates/workspace/base
+#     service-template     - rendered from templates/service/base
+#     statefulset-template - rendered from templates/platform-service/base/statefulset
+#                            (direct approved image, no operator dependency)
+#     operator-placeholder - IMPLEMENTATION_REQUIRED: needs an enterprise-selected
+#                            operator (see implementation.candidateOperators /
+#                            decisionNeeded). See templates/platform-service/base/operator-placeholder.
+#     helm-placeholder     - IMPLEMENTATION_REQUIRED: needs an enterprise-selected
+#                            and security-reviewed Helm chart (see implementation.candidateCharts).
+#     platform-integration - not a standalone workload; a configuration/component
+#                            layered onto other workspaces (see templates/integration/*).
+#   image.repository     : relative to registry.organization in config/registry.yaml
+#                           (null when delivery is via operator/template, not a direct image)
+#   image.tag             : "approved" today; production should migrate to image.digest
+#                           (see config/registry.yaml and docs/ARCHITECTURE.md "Image Supply Chain")
+#   profile               : key into config/profiles.yaml (small|medium|large) -- resource
+#                           values are NEVER duplicated here, only referenced by name
+#   storage.enabled/size  : drives whether scripts/provision.sh creates a PVC
+#   gpu.supported         : whether --gpu true is allowed for this Catalog ID at all
+#                           (GPU is never auto-requested -- see config/policies.yaml)
+#   approval              : auto | review (see config/policies.yaml "approval" section)
+#   remedySelectable      : whether this Catalog ID is exposed as a Remedy service
+#                           catalog item (mirrors the "Remedy Catalog View" sheet)
+#
+apiVersion: sandbox.gosi/v1
+kind: CatalogConfig
+metadata:
+  name: enterprise-sandbox-catalog
+  description: 'Central machine-readable Enterprise Sandbox Catalog. Source of truth: Sandbox_Image_Catalog.xlsx
+    (Catalog sheet). Consumed by scripts/provision.sh, scripts/validate.sh, and (future) the provisioning
+    API / Ansible / Remedy integration. Do not hardcode catalog logic in automation -- read it from here.'
+  sourceWorkbook: Sandbox_Image_Catalog.xlsx
+  sourceSheet: Catalog
+  generatedEntries: 49
+catalog:
+  BASE-UBI9:
+    name: UBI 9
+    domain: base-images
+    domainLabel: Base Images
+    type: base-image
+    excelType: Base Image
+    useCases: Build enterprise sandbox images
+    technology: RHEL UBI 9 + CA certificates
+    delivery: sandbox/base/ubi9
+    implementation:
+      method: none-base-image
+    profile: small
+    storage:
+      enabled: false
+      size: null
+      accessMode: null
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: false
+    approval: auto
+    owner: Infra
+    priority: P0
+    notes: Foundation image
+    image:
+      repository: base/ubi9
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  BASE-UBI9M:
+    name: UBI 9 Minimal
+    domain: base-images
+    domainLabel: Base Images
+    type: base-image
+    excelType: Base Image
+    useCases: Minimal secure containers
+    technology: UBI 9 Minimal
+    delivery: sandbox/base/ubi9-minimal
+    implementation:
+      method: none-base-image
+    profile: small
+    storage:
+      enabled: false
+      size: null
+      accessMode: null
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: false
+    approval: auto
+    owner: Infra
+    priority: P0
+    notes: Preferred minimal base
+    image:
+      repository: base/ubi9-minimal
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  BASE-BUSYBOX:
+    name: Utility Minimal
+    domain: base-images
+    domainLabel: Base Images
+    type: base-image
+    excelType: Base Image
+    useCases: Simple diagnostics and container testing
+    technology: Approved minimal utility image
+    delivery: sandbox/base/utility-minimal
+    implementation:
+      method: none-base-image
+    profile: small
+    storage:
+      enabled: false
+      size: null
+      accessMode: null
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: false
+    approval: auto
+    owner: Infra + Security
+    priority: P1
+    notes: Only approved diagnostic utilities
+    image:
+      repository: base/utility-minimal
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  DEV-PY:
+    name: Python Dev
+    domain: development
+    domainLabel: Development Runtime
+    type: workspace
+    excelType: Workspace
+    useCases: APIs, automation, agents, scripts
+    technology: Python 3.12/3.13, pip, venv, git, build tools
+    delivery: sandbox/dev/python
+    implementation:
+      method: workspace-template
+    profile: small
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: auto
+    owner: Infra
+    priority: P0
+    notes: General Python workspace
+    image:
+      repository: dev/python
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  DEV-NODE:
+    name: Node.js Dev
+    domain: development
+    domainLabel: Development Runtime
+    type: workspace
+    excelType: Workspace
+    useCases: JavaScript, TypeScript, AI coding agents, frontend/backend
+    technology: Node.js 22, npm, npx, pnpm, git
+    delivery: sandbox/dev/nodejs
+    implementation:
+      method: workspace-template
+    profile: small
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: auto
+    owner: Infra
+    priority: P0
+    notes: Important for AI coding tools
+    image:
+      repository: dev/nodejs
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  DEV-JAVA:
+    name: Java Dev
+    domain: development
+    domainLabel: Development Runtime
+    type: workspace
+    excelType: Workspace
+    useCases: Spring Boot, enterprise Java, APIs
+    technology: OpenJDK 21, Maven, Gradle, git
+    delivery: sandbox/dev/java
+    implementation:
+      method: workspace-template
+    profile: medium
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: auto
+    owner: Infra
+    priority: P0
+    notes: null
+    image:
+      repository: dev/java
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  DEV-DOTNET:
+    name: .NET Dev
+    domain: development
+    domainLabel: Development Runtime
+    type: workspace
+    excelType: Workspace
+    useCases: ASP.NET, APIs, enterprise apps
+    technology: .NET SDK 8/10, git
+    delivery: sandbox/dev/dotnet
+    implementation:
+      method: workspace-template
+    profile: medium
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: auto
+    owner: Infra
+    priority: P1
+    notes: null
+    image:
+      repository: dev/dotnet
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  DEV-GO:
+    name: Go Dev
+    domain: development
+    domainLabel: Development Runtime
+    type: workspace
+    excelType: Workspace
+    useCases: Cloud-native services, CLIs, APIs
+    technology: Go, git, build tools
+    delivery: sandbox/dev/go
+    implementation:
+      method: workspace-template
+    profile: small
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: auto
+    owner: Infra
+    priority: P1
+    notes: null
+    image:
+      repository: dev/go
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  DEV-RUST:
+    name: Rust Dev
+    domain: development
+    domainLabel: Development Runtime
+    type: workspace
+    excelType: Workspace
+    useCases: Systems, high-performance services
+    technology: Rust, Cargo, git
+    delivery: sandbox/dev/rust
+    implementation:
+      method: workspace-template
+    profile: medium
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra
+    priority: P2
+    notes: null
+    image:
+      repository: dev/rust
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  DEV-PHP:
+    name: PHP Dev
+    domain: development
+    domainLabel: Development Runtime
+    type: workspace
+    excelType: Workspace
+    useCases: Web applications and APIs
+    technology: PHP, Composer, git
+    delivery: sandbox/dev/php
+    implementation:
+      method: workspace-template
+    profile: small
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: auto
+    owner: Infra
+    priority: P2
+    notes: null
+    image:
+      repository: dev/php
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  DEV-RUBY:
+    name: Ruby Dev
+    domain: development
+    domainLabel: Development Runtime
+    type: workspace
+    excelType: Workspace
+    useCases: Ruby/Rails experimentation
+    technology: Ruby, Bundler, git
+    delivery: sandbox/dev/ruby
+    implementation:
+      method: workspace-template
+    profile: small
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra
+    priority: P2
+    notes: null
+    image:
+      repository: dev/ruby
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  AI-FULL:
+    name: AI Full-Stack Dev
+    domain: ai
+    domainLabel: AI & Agentic
+    type: workspace
+    excelType: Workspace
+    useCases: Claude Code/Codex-style agents, full-stack prototyping
+    technology: Python + Node.js + git + jq + curl + SSH + build tools
+    delivery: sandbox/ai/fullstack-dev
+    implementation:
+      method: workspace-template
+    profile: medium
+    storage:
+      enabled: true
+      size: 20Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: auto
+    owner: Infra + Security
+    priority: P0
+    notes: Primary agent-ready image
+    image:
+      repository: ai/fullstack-dev
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  AI-AGENT:
+    name: Agent Engineering
+    domain: ai
+    domainLabel: AI & Agentic
+    type: workspace
+    excelType: Workspace
+    useCases: Agent frameworks, tool calling, MCP clients, API integrations
+    technology: Python + Node.js + SDK tooling + approved agent libraries
+    delivery: sandbox/ai/agent-engineering
+    implementation:
+      method: workspace-template
+    profile: medium
+    storage:
+      enabled: true
+      size: 20Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra + AI
+    priority: P0
+    notes: No API keys embedded
+    image:
+      repository: ai/agent-engineering
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  AI-PY:
+    name: Python AI/ML
+    domain: ai
+    domainLabel: AI & Agentic
+    type: workspace
+    excelType: Workspace
+    useCases: ML, NLP, embeddings, data science
+    technology: Python, NumPy, pandas, scikit-learn, common approved ML libs
+    delivery: sandbox/ai/python-ai
+    implementation:
+      method: workspace-template
+    profile: medium
+    storage:
+      enabled: true
+      size: 20Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: true
+      requestable: true
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: auto
+    owner: Infra + Data
+    priority: P0
+    notes: null
+    image:
+      repository: ai/python-ai
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  AI-PT:
+    name: PyTorch
+    domain: ai
+    domainLabel: AI & Agentic
+    type: workspace
+    excelType: Workspace
+    useCases: Deep learning, model experiments
+    technology: PyTorch + approved dependencies
+    delivery: sandbox/ai/pytorch
+    implementation:
+      method: workspace-template
+    profile: large
+    storage:
+      enabled: true
+      size: 50Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: true
+      requestable: true
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra + AI
+    priority: P1
+    notes: CPU and GPU variants
+    image:
+      repository: ai/pytorch
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  AI-TF:
+    name: TensorFlow
+    domain: ai
+    domainLabel: AI & Agentic
+    type: workspace
+    excelType: Workspace
+    useCases: Deep learning/model experimentation
+    technology: TensorFlow + approved dependencies
+    delivery: sandbox/ai/tensorflow
+    implementation:
+      method: workspace-template
+    profile: large
+    storage:
+      enabled: true
+      size: 50Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: true
+      requestable: true
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra + AI
+    priority: P2
+    notes: null
+    image:
+      repository: ai/tensorflow
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  AI-HF:
+    name: Transformers/NLP
+    domain: ai
+    domainLabel: AI & Agentic
+    type: workspace
+    excelType: Workspace
+    useCases: LLM/NLP experimentation
+    technology: Python + Transformers + tokenizers + approved libraries
+    delivery: sandbox/ai/transformers
+    implementation:
+      method: workspace-template
+    profile: large
+    storage:
+      enabled: true
+      size: 50Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: true
+      requestable: true
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra + AI
+    priority: P1
+    notes: null
+    image:
+      repository: ai/transformers
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  AI-LLMTOOLS:
+    name: LLM App Dev
+    domain: ai
+    domainLabel: AI & Agentic
+    type: workspace
+    excelType: Workspace
+    useCases: RAG, embeddings, evaluation, prompt/application testing
+    technology: Python/Node + approved LLM app libraries
+    delivery: sandbox/ai/llm-app-dev
+    implementation:
+      method: workspace-template
+    profile: medium
+    storage:
+      enabled: true
+      size: 20Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra + AI
+    priority: P1
+    notes: Provider credentials injected at runtime
+    image:
+      repository: ai/llm-app-dev
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  DATA-JUP:
+    name: JupyterLab
+    domain: data
+    domainLabel: Data & Analytics
+    type: workspace
+    excelType: Service/Workspace
+    useCases: Interactive notebooks, analysis, prototyping
+    technology: JupyterLab + Python kernel
+    delivery: sandbox/data/jupyter
+    implementation:
+      method: workspace-template
+    profile: medium
+    storage:
+      enabled: true
+      size: 20Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: true
+      requestable: true
+      default: false
+    network:
+      route:
+        enabled: true
+        port: 8888
+        protocol: HTTP
+    remedySelectable: true
+    approval: auto
+    owner: Infra + Data
+    priority: P0
+    notes: null
+    image:
+      repository: data/jupyter
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  DATA-R:
+    name: R / RStudio-like Workspace
+    domain: data
+    domainLabel: Data & Analytics
+    type: workspace
+    excelType: Workspace
+    useCases: Statistics and R analytics
+    technology: R + approved packages
+    delivery: sandbox/data/r
+    implementation:
+      method: workspace-template
+    profile: medium
+    storage:
+      enabled: true
+      size: 20Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra + Data
+    priority: P2
+    notes: null
+    image:
+      repository: data/r
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  DATA-SPARK:
+    name: Apache Spark
+    domain: data
+    domainLabel: Data & Analytics
+    type: platform-service
+    excelType: Platform Service
+    useCases: Distributed data processing
+    technology: Approved Spark distribution/operator
+    delivery: Template/Operator + approved images
+    implementation:
+      method: operator-placeholder
+      candidateOperators:
+      - Kubeflow Spark Operator (spark-operator)
+      - Apache Spark on Kubernetes (spark-submit, in-cluster scheduler mode)
+      decisionNeeded: Select and OperatorHub-certify a Spark operator/distribution for OpenShift; define
+        driver/executor resource policy.
+      status: IMPLEMENTATION_REQUIRED
+    profile: large
+    storage:
+      enabled: true
+      size: 100Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra + Data
+    priority: P1
+    notes: Prefer operator/template
+    image:
+      repository: null
+      tag: null
+      digest: null
+      pullPolicy: null
+  DATA-DBT:
+    name: dbt Dev
+    domain: data
+    domainLabel: Data & Analytics
+    type: workspace
+    excelType: Workspace
+    useCases: Analytics engineering and SQL transformations
+    technology: Python + dbt adapters as approved
+    delivery: sandbox/data/dbt
+    implementation:
+      method: workspace-template
+    profile: medium
+    storage:
+      enabled: true
+      size: 20Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Data
+    priority: P1
+    notes: null
+    image:
+      repository: data/dbt
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  DATA-AIRFLOW:
+    name: Airflow
+    domain: data
+    domainLabel: Data & Analytics
+    type: platform-service
+    excelType: Platform Service
+    useCases: Workflow/data pipeline orchestration
+    technology: Airflow via approved Helm/operator pattern
+    delivery: Template/Helm + approved images
+    implementation:
+      method: helm-placeholder
+      candidateCharts:
+      - apache/airflow (community Helm chart)
+      - vendor-certified Airflow distribution
+      decisionNeeded: Select and security-review an Airflow Helm chart/version; define executor (Celery/Kubernetes)
+        and metadata DB dependency (DB-PG).
+      status: IMPLEMENTATION_REQUIRED
+    profile: medium
+    storage:
+      enabled: true
+      size: 50Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra + Data
+    priority: P1
+    notes: null
+    image:
+      repository: null
+      tag: null
+      digest: null
+      pullPolicy: null
+  DATA-TRINO:
+    name: Trino
+    domain: data
+    domainLabel: Data & Analytics
+    type: platform-service
+    excelType: Platform Service
+    useCases: Federated SQL/query experimentation
+    technology: Approved Trino deployment
+    delivery: Template/Helm + approved images
+    implementation:
+      method: helm-placeholder
+      candidateCharts:
+      - trinodb/trino (community Helm chart)
+      decisionNeeded: Select and security-review a Trino Helm chart/version; define catalog/connector
+        configuration policy.
+      status: IMPLEMENTATION_REQUIRED
+    profile: large
+    storage:
+      enabled: true
+      size: 50Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra + Data
+    priority: P2
+    notes: null
+    image:
+      repository: null
+      tag: null
+      digest: null
+      pullPolicy: null
+  DB-PG:
+    name: PostgreSQL
+    domain: database
+    domainLabel: Database
+    type: platform-service
+    excelType: Platform Service
+    useCases: Relational DB, application prototypes
+    technology: PostgreSQL operator/template
+    delivery: Operator + sandbox/data/postgresql
+    implementation:
+      method: operator-placeholder
+      candidateOperators:
+      - Crunchy Postgres for Kubernetes (PGO)
+      - CloudNativePG
+      decisionNeeded: Select and OperatorHub-certify a PostgreSQL operator for OpenShift; define backup/HA
+        policy for sandbox use.
+      status: IMPLEMENTATION_REQUIRED
+    profile: medium
+    storage:
+      enabled: true
+      size: 20Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: auto
+    owner: Infra + DBA
+    priority: P0
+    notes: null
+    image:
+      repository: null
+      tag: null
+      digest: null
+      pullPolicy: null
+  DB-MYSQL:
+    name: MySQL
+    domain: database
+    domainLabel: Database
+    type: platform-service
+    excelType: Platform Service
+    useCases: Relational application testing
+    technology: Approved MySQL deployment
+    delivery: Template/Operator + approved image
+    implementation:
+      method: operator-placeholder
+      candidateOperators:
+      - Percona Operator for MySQL
+      - Oracle MySQL Operator
+      decisionNeeded: Select and OperatorHub-certify a MySQL operator; confirm licensing for any non-community
+        distribution.
+      status: IMPLEMENTATION_REQUIRED
+    profile: medium
+    storage:
+      enabled: true
+      size: 20Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra + DBA
+    priority: P2
+    notes: null
+    image:
+      repository: null
+      tag: null
+      digest: null
+      pullPolicy: null
+  DB-MONGO:
+    name: MongoDB-compatible
+    domain: database
+    domainLabel: Database
+    type: platform-service
+    excelType: Platform Service
+    useCases: Document-oriented prototypes
+    technology: Approved enterprise/community distribution per policy
+    delivery: Template/Operator + approved image
+    implementation:
+      method: operator-placeholder
+      candidateOperators:
+      - Percona Operator for MongoDB
+      - MongoDB Community Kubernetes Operator
+      - FerretDB (Postgres-backed, license-friendly alternative)
+      decisionNeeded: 'Select a MongoDB-compatible distribution/operator and complete licensing/entitlement
+        review (Notes: licensing/security approval required).'
+      status: IMPLEMENTATION_REQUIRED
+    profile: medium
+    storage:
+      enabled: true
+      size: 30Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra + DBA
+    priority: P2
+    notes: Licensing/security approval required
+    image:
+      repository: null
+      tag: null
+      digest: null
+      pullPolicy: null
+  DB-VALKEY:
+    name: Valkey / Cache
+    domain: database
+    domainLabel: Database
+    type: platform-service
+    excelType: Platform Service
+    useCases: Caching, session state, queues
+    technology: Approved Valkey image/template
+    delivery: sandbox/data/valkey
+    implementation:
+      method: statefulset-template
+    profile: small
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: 6379
+        protocol: TCP
+    remedySelectable: true
+    approval: auto
+    owner: Infra
+    priority: P1
+    notes: null
+    image:
+      repository: data/valkey
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  DB-ELASTIC:
+    name: OpenSearch
+    domain: database
+    domainLabel: Database/Search
+    type: platform-service
+    excelType: Platform Service
+    useCases: Search, indexing, vector/search experiments
+    technology: Approved OpenSearch deployment
+    delivery: Template/Operator + approved images
+    implementation:
+      method: operator-placeholder
+      candidateOperators:
+      - OpenSearch Operator (opensearch-project/opensearch-k8s-operator)
+      decisionNeeded: Select and OperatorHub-certify the OpenSearch operator; define cluster sizing and
+        snapshot policy.
+      status: IMPLEMENTATION_REQUIRED
+    profile: large
+    storage:
+      enabled: true
+      size: 100Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra + Data
+    priority: P1
+    notes: null
+    image:
+      repository: null
+      tag: null
+      digest: null
+      pullPolicy: null
+  INT-KAFKA:
+    name: Kafka
+    domain: integration
+    domainLabel: Integration
+    type: platform-service
+    excelType: Platform Service
+    useCases: Event streaming, integration prototypes
+    technology: Approved Kafka operator/distribution
+    delivery: Operator + approved images
+    implementation:
+      method: operator-placeholder
+      candidateOperators:
+      - Strimzi / AMQ Streams (Kafka-operator ecosystem)
+      decisionNeeded: Confirm licensed Kafka operator (e.g. AMQ Streams subscription) and OperatorHub
+        channel; define topic/quota policy.
+      status: IMPLEMENTATION_REQUIRED
+    profile: large
+    storage:
+      enabled: true
+      size: 100Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra + Integration
+    priority: P1
+    notes: null
+    image:
+      repository: null
+      tag: null
+      digest: null
+      pullPolicy: null
+  INT-KCONNECT:
+    name: Kafka Connect
+    domain: integration
+    domainLabel: Integration
+    type: platform-service
+    excelType: Platform Service
+    useCases: Source/sink connectors
+    technology: Kafka Connect + approved connectors
+    delivery: sandbox/integration/kafka-connect
+    implementation:
+      method: statefulset-template
+      dependsOn: INT-KAFKA (requires an approved Kafka bootstrap endpoint supplied via ConfigMap)
+    profile: medium
+    storage:
+      enabled: true
+      size: 20Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: 8083
+        protocol: HTTP
+    remedySelectable: true
+    approval: review
+    owner: Integration
+    priority: P2
+    notes: null
+    image:
+      repository: integration/kafka-connect
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  INT-MQ:
+    name: Message Broker
+    domain: integration
+    domainLabel: Integration
+    type: platform-service
+    excelType: Platform Service
+    useCases: Messaging/queue experiments
+    technology: Approved AMQ/RabbitMQ equivalent
+    delivery: Operator/Template
+    implementation:
+      method: operator-placeholder
+      candidateOperators:
+      - AMQ Broker Operator
+      - RabbitMQ Cluster Operator
+      decisionNeeded: Select and OperatorHub-certify a messaging operator; define queue/exchange provisioning
+        policy.
+      status: IMPLEMENTATION_REQUIRED
+    profile: medium
+    storage:
+      enabled: true
+      size: 20Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra + Integration
+    priority: P2
+    notes: null
+    image:
+      repository: null
+      tag: null
+      digest: null
+      pullPolicy: null
+  INT-API:
+    name: API Development
+    domain: integration
+    domainLabel: Integration
+    type: workspace
+    excelType: Workspace
+    useCases: REST/GraphQL API development and testing
+    technology: Python/Node + OpenAPI tooling
+    delivery: sandbox/integration/api-dev
+    implementation:
+      method: workspace-template
+    profile: small
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: auto
+    owner: Infra
+    priority: P1
+    notes: null
+    image:
+      repository: integration/api-dev
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  OPS-OC:
+    name: OpenShift Tools
+    domain: devops
+    domainLabel: DevOps & Platform
+    type: workspace
+    excelType: Workspace
+    useCases: Cluster/project operations within delegated RBAC
+    technology: oc, kubectl, Helm, Kustomize
+    delivery: sandbox/tools/openshift
+    implementation:
+      method: workspace-template
+    profile: small
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra
+    priority: P0
+    notes: No cluster-admin
+    # OPS-OC exists specifically to run oc/kubectl/Helm/Kustomize against the
+    # sandbox's OWN namespace via the namespace-scoped RoleBinding to
+    # sandbox-workspace-edit (base/rbac/cluster-role.yaml). It therefore needs
+    # its ServiceAccount token mounted; every other workspace defaults to
+    # automountServiceAccountToken: false. This is still delegated, namespace-
+    # scoped RBAC only -- never cluster-admin (Governance: "No cluster-admin").
+    serviceAccount:
+      automountToken: true
+    image:
+      repository: tools/openshift
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  OPS-IAC:
+    name: IaC Tools
+    domain: devops
+    domainLabel: DevOps & Platform
+    type: workspace
+    excelType: Workspace
+    useCases: Terraform/OpenTofu and Ansible experiments
+    technology: OpenTofu/Terraform as approved + Ansible
+    delivery: sandbox/tools/iac
+    implementation:
+      method: workspace-template
+    profile: medium
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra
+    priority: P1
+    notes: null
+    image:
+      repository: tools/iac
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  OPS-CICD:
+    name: CI/CD Builder
+    domain: devops
+    domainLabel: DevOps & Platform
+    type: workspace
+    excelType: Workspace
+    useCases: Build/test/package pipelines
+    technology: git, buildah/podman-compatible tools as approved, language builders
+    delivery: sandbox/tools/cicd
+    implementation:
+      method: workspace-template
+    profile: medium
+    storage:
+      enabled: true
+      size: 20Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra + DevOps
+    priority: P1
+    notes: null
+    image:
+      repository: tools/cicd
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  OPS-HELM:
+    name: Helm/Kustomize Dev
+    domain: devops
+    domainLabel: DevOps & Platform
+    type: workspace
+    excelType: Workspace
+    useCases: Packaging and Kubernetes manifests
+    technology: Helm, Kustomize, yq, jq
+    delivery: sandbox/tools/k8s-packaging
+    implementation:
+      method: workspace-template
+    profile: small
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: auto
+    owner: Infra
+    priority: P1
+    notes: null
+    image:
+      repository: tools/k8s-packaging
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  OPS-ANSIBLE:
+    name: Ansible Automation
+    domain: devops
+    domainLabel: DevOps & Platform
+    type: workspace
+    excelType: Workspace
+    useCases: Configuration automation
+    technology: Ansible Core + approved collections
+    delivery: sandbox/tools/ansible
+    implementation:
+      method: workspace-template
+    profile: medium
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Infra
+    priority: P1
+    notes: null
+    image:
+      repository: tools/ansible
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  TEST-API:
+    name: API Test
+    domain: testing
+    domainLabel: Testing
+    type: workspace
+    excelType: Workspace
+    useCases: API functional testing
+    technology: curl, jq, Newman/approved API test tooling
+    delivery: sandbox/test/api
+    implementation:
+      method: workspace-template
+    profile: small
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: auto
+    owner: QA
+    priority: P1
+    notes: null
+    image:
+      repository: test/api
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  TEST-WEB:
+    name: Browser Test
+    domain: testing
+    domainLabel: Testing
+    type: workspace
+    excelType: Workspace
+    useCases: Automated UI testing
+    technology: Playwright/Selenium dependencies as approved
+    delivery: sandbox/test/browser
+    implementation:
+      method: workspace-template
+    profile: medium
+    storage:
+      enabled: true
+      size: 20Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: QA
+    priority: P1
+    notes: null
+    image:
+      repository: test/browser
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  TEST-PERF:
+    name: Performance Test
+    domain: testing
+    domainLabel: Testing
+    type: workspace
+    excelType: Workspace
+    useCases: Load/performance experiments
+    technology: k6/JMeter as approved
+    delivery: sandbox/test/performance
+    implementation:
+      method: workspace-template
+    profile: medium
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: QA
+    priority: P1
+    notes: null
+    image:
+      repository: test/performance
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  SEC-SAST:
+    name: Secure Code Analysis
+    domain: security
+    domainLabel: Security
+    type: workspace
+    excelType: Workspace
+    useCases: Developer-side security checks
+    technology: Approved SAST/SCA/secret-scanning CLIs
+    delivery: sandbox/security/devsecops
+    implementation:
+      method: workspace-template
+    profile: medium
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Security
+    priority: P1
+    notes: Tool licensing may apply
+    image:
+      repository: security/devsecops
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  SEC-NET:
+    name: Network Diagnostic
+    domain: security
+    domainLabel: Security
+    type: workspace
+    excelType: Workspace
+    useCases: Connectivity/DNS/TLS troubleshooting
+    technology: curl, dig, openssl, traceroute equivalents as approved
+    delivery: sandbox/security/network-tools
+    implementation:
+      method: workspace-template
+    profile: small
+    storage:
+      enabled: true
+      size: 5Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Security + Infra
+    priority: P1
+    notes: Restricted capabilities
+    image:
+      repository: security/network-tools
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  WEB-NGINX:
+    name: NGINX
+    domain: web
+    domainLabel: Web
+    type: service
+    excelType: Service
+    useCases: Static web/reverse proxy prototypes
+    technology: Approved NGINX image
+    delivery: sandbox/web/nginx
+    implementation:
+      method: service-template
+    profile: small
+    storage:
+      enabled: true
+      size: 5Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: true
+        port: 8080
+        protocol: HTTP
+    remedySelectable: true
+    approval: auto
+    owner: Infra
+    priority: P1
+    notes: null
+    image:
+      repository: web/nginx
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  WEB-FRONT:
+    name: Frontend Dev
+    domain: web
+    domainLabel: Web
+    type: workspace
+    excelType: Workspace
+    useCases: React/Vue/Angular frontend development
+    technology: Node.js + approved frontend tooling
+    delivery: sandbox/web/frontend-dev
+    implementation:
+      method: workspace-template
+    profile: small
+    storage:
+      enabled: true
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: true
+        port: 3000
+        protocol: HTTP
+    remedySelectable: true
+    approval: auto
+    owner: Infra
+    priority: P1
+    notes: null
+    image:
+      repository: web/frontend-dev
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  STO-S3CLI:
+    name: Object Storage Client
+    domain: storage
+    domainLabel: Storage
+    type: workspace
+    excelType: Workspace
+    useCases: S3/object storage testing
+    technology: Approved S3 CLI/SDK tooling
+    delivery: sandbox/storage/s3-client
+    implementation:
+      method: workspace-template
+    profile: small
+    storage:
+      enabled: true
+      size: 5Gi
+      accessMode: ReadWriteOnce
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: auto
+    owner: Infra
+    priority: P1
+    notes: Object storage itself may be shared service
+    image:
+      repository: storage/s3-client
+      tag: approved
+      digest: null
+      pullPolicy: IfNotPresent
+  SHARED-GIT:
+    name: Git Integration
+    domain: shared
+    domainLabel: Shared Capability
+    type: integration
+    excelType: Integration
+    useCases: Clone/push enterprise repositories
+    technology: git + SSH/HTTPS trust configuration
+    delivery: Runtime capability / secret integration
+    implementation:
+      method: platform-integration
+      component: templates/integration/git
+    profile: small
+    storage:
+      enabled: false
+      size: null
+      accessMode: null
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: auto
+    owner: Infra + DevOps
+    priority: P0
+    notes: Not necessarily standalone image
+    image:
+      repository: null
+      tag: null
+      digest: null
+      pullPolicy: null
+  SHARED-SECRETS:
+    name: Secrets Integration
+    domain: shared
+    domainLabel: Shared Capability
+    type: integration
+    excelType: Integration
+    useCases: Inject API keys/tokens/certs securely
+    technology: OpenShift Secrets / enterprise vault integration
+    delivery: Platform integration
+    implementation:
+      method: platform-integration
+      component: templates/integration/secrets
+    profile: small
+    storage:
+      enabled: false
+      size: null
+      accessMode: null
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: review
+    owner: Security + Infra
+    priority: P0
+    notes: Never bake secrets into images
+    image:
+      repository: null
+      tag: null
+      digest: null
+      pullPolicy: null
+  SHARED-OBS:
+    name: Observability Integration
+    domain: shared
+    domainLabel: Shared Capability
+    type: integration
+    excelType: Integration
+    useCases: Logs, metrics, traces
+    technology: Approved OpenShift/enterprise observability agents
+    delivery: Platform integration
+    implementation:
+      method: platform-integration
+      component: templates/integration/observability
+    profile: small
+    storage:
+      enabled: false
+      size: null
+      accessMode: null
+    gpu:
+      supported: false
+      requestable: false
+      default: false
+    network:
+      route:
+        enabled: false
+        port: null
+        protocol: null
+    remedySelectable: true
+    approval: auto
+    owner: Infra
+    priority: P0
+    notes: Prefer shared platform capability
+    image:
+      repository: null
+      tag: null
+      digest: null
+      pullPolicy: null

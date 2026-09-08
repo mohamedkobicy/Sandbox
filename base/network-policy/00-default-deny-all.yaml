@@ -1,0 +1,20 @@
+# Rendered per-request by scripts/provision.sh via envsubst.
+# Required vars: SANDBOX_NAMESPACE, CATALOG_ID, REQUEST_ID
+#
+# Secure-by-default posture: deny all ingress and egress in the sandbox
+# namespace. Every other NetworkPolicy in this directory is an explicit,
+# narrow exception layered on top of this deny-all baseline (Section 9).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: ${SANDBOX_NAMESPACE}
+  labels:
+    sandbox.gosi/catalog-id: "${CATALOG_ID}"
+    sandbox.gosi/request-id: "${REQUEST_ID}"
+    sandbox.gosi/managed-by: "sandbox-automation"
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress

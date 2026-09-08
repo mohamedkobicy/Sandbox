@@ -1,0 +1,26 @@
+# =============================================================================
+# EXAMPLE ONLY -- NOT APPLIED. Illustrates the values.yaml shape once a real
+# Helm chart is selected for DATA-AIRFLOW (see README.md in this directory).
+# =============================================================================
+# helm upgrade --install data-airflow <candidate-chart> \
+#   --namespace ${SANDBOX_NAMESPACE} \
+#   --values catalog/data/data-airflow/helm-values-placeholder.yaml
+#
+resources:
+  requests:
+    cpu: "${CPU_REQUEST}"      # from config/profiles.yaml[medium]
+    memory: "${MEM_REQUEST}"
+  limits:
+    cpu: "${CPU_LIMIT}"
+    memory: "${MEM_LIMIT}"
+persistence:
+  enabled: true
+  size: "${STORAGE_SIZE}"
+  storageClassName: "${STORAGE_CLASS}"   # empty = cluster default
+securityContext:
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+# IMPLEMENTATION_REQUIRED: chart-specific values (executor type, connectors,
+# catalogs, auth, etc.) once the chart above is selected and reviewed.
